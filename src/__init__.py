@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import os
+from werkzeug.utils import secure_filename
 from flask import Flask, g, request, url_for, Response, make_response, jsonify
 
 app = Flask(__name__)
@@ -108,3 +109,50 @@ def wsgi_test():
         start_response('200 OK', headers)
         return [body]
     return make_response(application)
+
+
+@app.route("/method/get", methods=["GET"])
+def getMethod():
+    if request.method == "GET":
+        # GET의 query 처리
+        q = request.args.get('q')
+        return "q : %s" % q, 200
+
+
+@app.route("/method/get/list", methods=["GET"])
+def getListMethod():
+    if request.method == "GET":
+        # GET의 query 처리
+        q = request.args.getlist('q')
+        return "q : %s" % q, 200
+
+
+@app.route("/method/post/form", methods=["POST"])
+def postFormMethod():
+    if request.method == "POST":
+        # GET의 form 처리
+        filename = request.form.get("filename")
+        print(type(filename))
+        if len(filename) > 1024:
+            return make_response(filename)
+        else:
+            return filename, 201
+
+
+@app.route("/method/post/file", methods=["POST"])
+def postFileMethod():
+    if request.method == "POST":
+        file = request.files['file']
+        filename = secure_filename(file.filename)
+        return 'Upload %s' % filename, 201
+
+
+@app.route("/method/post/json", methods=["POST"])
+def postJsonMethod():
+    if request.method == "POST":
+        # GET의 body(json) 처리
+        if request.is_json == True:
+            body = request.get_json()
+            return "body : %s" % body, 201
+        else:
+            return "", 404
