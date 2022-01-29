@@ -1,10 +1,42 @@
 # -*- coding:utf-8 -*-
 import os
+from datetime import datetime, date, timedelta
 from werkzeug.utils import secure_filename
-from flask import Flask, g, request, url_for, Response, make_response, jsonify
+from flask import Flask, g, request, url_for, Response, make_response, session, render_template
+from flask_restplus import Api, Resource, fields
 
 app = Flask(__name__)
+api = Api(app, version='0.0.1', title='API title',
+          description='A simple API',
+          )
+ns = api.namespace('custom', description='operations')
+app.config.SWAGGER_UI_DOC_EXPANSION = 'full'
+# request content의 용량 제한
+app.config.update(MAX_CONTENT_LENGTH=1024*1024)
+# session 보안 설정
+# app.secret_key = '!f09wi!@dfjaslk'
+# or
+app.config.update(
+    SECRET_KEY='!f09wi!@dfjaslk',
+    SESSION_COOKIE_NAME='web_flask_session',
+    PERMANENT_SESSION_LIFETIME=timedelta(31)
+)
+# 이스케이프 처리
+# app.jinja_env.trim_blocks = True
 app.debug = True
+
+# 비밀번호 : 단방향 암호화만 허용
+# 주민번호 및 계좌 번호 : 양방향 암호화까지 허용
+
+
+@ns.route("/")
+@ns.response(200, 'Found')
+@ns.response(404, 'Not found')
+@ns.response(500, 'Internal Error')
+class Algorithnm(Resource):
+    @ns.doc('get')
+    def get(sef):
+        return "Hello, World!", 200
 
 
 def dated_url_for(endpoint, **values):
@@ -48,6 +80,11 @@ def before_request():
 @app.route("/")
 def index():
     return "Hello, World!", 200
+
+
+@app.route("/tmpl")
+def t():
+    return render_template("index.html", title="Title")
 
 
 # 해당 경로에 대한 요청 처리 이후에 대한 처리
@@ -99,10 +136,25 @@ def chapter1():
     return make_response(res)
 
 
+@app.route("/rp")
+def rp():
+    # 같은 필드 값으로 여러개가 들어오는 경우 제일 처음에 들어온 값만 인정함.
+    q = request.args.get('q')
+    return "q= %s" % str(q)
+
+
+@app.route("/rp/list")
+def rp_list():
+    # 같은 필드 값으로 여러개가 들어오는 경우 리스트 형태로 받음
+    q = request.args.getlist('q')
+    return "q= %s" % str(q)
+
+
 # WSGI(WebServer Gateway Interface)
 @app.route("/test_wsgi")
 def wsgi_test():
     def application(environ, start_response):
+        # F12 개발자 도구 열어서 내용 확인해보면 됨.
         body = 'The request medthod was %s' % environ['REQUEST_METHOD']
         headers = [('Content-Type', 'text/plane'),
                    ('Content-Length', str(len(body)))]
@@ -156,3 +208,70 @@ def postJsonMethod():
             return "body : %s" % body, 201
         else:
             return "", 404
+
+
+@app.route("/wc")
+def wc():
+    key = request.args.get('key')
+    val = request.args.get('val')
+    res = Response("SET COOKIE")
+    res.set_cookie(key, val)
+    return make_response(res)
+
+
+@app.route("/rc")
+def rc():
+    key = request.args.get('key')
+    val = request.cookies.get(key)
+    return "cookie['" + key + "'] = " + str(val)
+
+
+@app.route("/reqenv")
+def reqenv():
+    return ('REQUEST_METHOD: %(REQUEST_METHOD) s <br>'
+            'SCRIPT_NAME: %(SCRIPT_NAME) s <br>'
+            'PATH_INFO: %(PATH_INFO) s <br>'
+            'QUERY_STRING: %(QUERY_STRING) s <br>'
+            'SERVER_NAME: %(SERVER_NAME) s <br>'
+            'SERVER_PORT: %(SERVER_PORT) s <br>'
+            'SERVER_PROTOCOL: %(SERVER_PROTOCOL) s <br>'
+            'wsgi.version: %(wsgi.version) s <br>'
+            'wsgi.url_scheme: %(wsgi.url_scheme) s <br>'
+            'wsgi.input: %(wsgi.input) s <br>'
+            'wsgi.errors: %(wsgi.errors) s <br>'
+            'wsgi.multithread: %(wsgi.multithread) s <br>'
+            'wsgi.multiprocess: %(wsgi.multiprocess) s <br>'
+            'wsgi.run_once: %(wsgi.run_once) s') % request.environ
+
+
+def ymd(fmt):
+    def trans(date_str):
+        return datetime.strptime(date_str, fmt)
+    return trans
+
+
+@app.route("/dt")
+def dt():
+    datestr = request.values.get('date', date.today(), type=ymd('%Y-%m-%d'))
+    return "우리나라 시간 형식: " + str(datestr)
+
+
+@app.route("/setsess")
+def setsess():
+    session['Token'] = '123X'
+    return "Session 설정 완료"
+
+
+@app.route("/getsess")
+def getsess():
+    if session.get('Token'):
+        return session.get("Token")
+    else:
+        return "Session 없음"
+
+
+@app.route("/delsess")
+def delsess():
+    if session.get('Token'):
+        del session['Token']
+    return "Session 삭제 완료"
