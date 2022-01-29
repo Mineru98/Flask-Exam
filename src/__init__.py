@@ -1,9 +1,11 @@
 # -*- coding:utf-8 -*-
-import os
-from datetime import datetime, date, timedelta
-from werkzeug.utils import secure_filename
+from src.control import auth, post, util
+from flask import Flask
+from flask_restplus import Api, Resource
 from flask import Flask, g, request, url_for, Response, make_response, session, render_template
-from flask_restplus import Api, Resource, fields
+from werkzeug.utils import secure_filename
+from datetime import datetime, date, timedelta
+import os
 
 app = Flask(__name__)
 api = Api(app, version='0.0.1', title='API title',
@@ -275,3 +277,8 @@ def delsess():
     if session.get('Token'):
         del session['Token']
     return "Session 삭제 완료"
+
+
+app.register_blueprint(auth.auth_router, url_prefix="/auth")
+app.register_blueprint(post.post_router, url_prefix="/post")
+app.register_blueprint(util.util_router, url_prefix="/util")
